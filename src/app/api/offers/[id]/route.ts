@@ -4,8 +4,9 @@ import { duffelClient } from '@/lib/duffel-client';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
+  const { params } = context; // Extract params correctly
   const offerId = params.id;
 
   if (!offerId) {
