@@ -1,9 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/types/flight.ts
 import {
   SearchResponse,
   SearchParams,
   Offer as DuffelOffer,
-  Airport as DuffelAirport,
 } from '@/app/types/duffel';
 
 export interface Airport {
@@ -137,24 +137,57 @@ export function adaptDuffelOffer(duffelOffer: DuffelOffer): Offer {
   return {
     ...duffelOffer,
     slices: duffelOffer.slices.map((slice) => ({
-      ...slice,
-      id: slice.id || Math.random().toString(36).substring(2, 9),
+      id: slice.id, // Ensure it has an ID
       segments: slice.segments.map((segment) => ({
-        ...segment,
-        // Add both property names to ensure compatibility
-        departing_at: segment.departure_time,
-        arriving_at: segment.arrival_time,
+        id: segment.id,
         departure_datetime: segment.departure_time,
         arrival_datetime: segment.arrival_time,
-        // Add references to airline objects for different component needs
-        marketing_carrier: segment.carrier || {
-          name: segment.airline?.name || 'Unknown Airline',
-          iata_code: segment.airline?.iata_code || '??',
+        departing_at: segment.departure_time, // Ensure these match the expected type
+        arriving_at: segment.arrival_time,
+        origin: {
+          name: segment.origin?.name || '',
+          iata_code: segment.origin?.iata_code || '',
+          city: segment.origin?.city || '',
+        },
+        destination: {
+          name: segment.destination?.name || '',
+          iata_code: segment.destination?.iata_code || '',
+          city: segment.destination?.city || '',
+        },
+        marketing_carrier: {
+          name:
+            segment.carrier?.name || segment.airline?.name || 'Unknown Airline',
+          iata_code:
+            segment.carrier?.iata_code || segment.airline?.iata_code || '??',
         },
         airline: segment.airline || segment.carrier,
         carrier: segment.carrier || segment.airline,
-      })),
-    })),
+        flight_number: segment.flight_number || '',
+        aircraft: segment.aircraft
+          ? { name: segment.aircraft.name }
+          : undefined,
+        duration: segment.duration || '',
+      })) as FlightSegment[], // Ensure it is of type FlightSegment[]
+      duration: slice.duration || '',
+      origin: slice.origin
+        ? {
+            iata_code: slice.origin.iata_code || '',
+            name: slice.origin.name || '',
+            city: slice.origin.city || '',
+          }
+        : undefined,
+      destination: slice.destination
+        ? {
+            iata_code: slice.destination.iata_code || '',
+            name: slice.destination.name || '',
+            city: slice.destination.city || '',
+          }
+        : undefined,
+      departure_date: slice.departure_date || '',
+      departure_time: slice.departure_time || '',
+      arrival_time: slice.arrival_time || '',
+      arrival_date: slice.arrival_date || '',
+    })) as FlightSlice[], // Ensure it is of type FlightSlice[]
     passenger_count: duffelOffer.passenger_count || 1,
   };
 }
