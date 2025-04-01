@@ -1,14 +1,14 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment */
-// @ts-ignore
-
 import { NextResponse } from 'next/server';
 import { duffelClient } from '@/lib/duffel-client';
 
-export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
-  const offerId = params.id;
+type Params = {
+  params: {
+    id: string;
+  };
+};
+
+export async function GET(request: Request, context: Params) {
+  const offerId = context.params.id;
 
   if (!offerId) {
     return NextResponse.json(
