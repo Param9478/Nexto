@@ -1,16 +1,56 @@
+/* eslint-disable react-hooks/exhaustive-deps */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// src/components/flight-results/FlightList.tsx
 'use client';
 
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FlightCard } from './FlightCard';
 import { Button } from '../ui/Button';
 import { Select } from '../ui/Select';
 import { Input } from '../ui/Input';
-import { Offer, adaptDuffelOffer } from '@/types/flight';
-import { Offer as DuffelOffer } from '@/app/types/duffel';
+import { Offer as FlightOffer } from '@/types/flight';
+
+// Then modify line 598 to use type assertion:
+
+// Properly typed interfaces
+interface Airline {
+  name: string;
+  iata_code: string;
+}
+
+interface Segment {
+  id: string;
+  airline: Airline;
+  origin: {
+    iata_code: string;
+    name: string;
+  };
+  destination: {
+    iata_code: string;
+    name: string;
+  };
+  departure_datetime: string;
+  arrival_datetime: string;
+  flight_number: string;
+}
+
+interface Slice {
+  id: string;
+  segments: Segment[];
+  duration?: string;
+}
+
+interface Offer {
+  id: string;
+  slices: Slice[];
+  total_amount: string;
+  total_currency: string;
+  passengers: any[];
+}
 
 interface FlightListProps {
-  offers: DuffelOffer[];
+  offers: Offer[];
   isLoading: boolean;
   onSelectFlight: (offer: Offer) => void;
 }
@@ -34,188 +74,9 @@ export const FlightList: React.FC<FlightListProps> = ({
   const [selectedStops, setSelectedStops] = useState<number[]>([]);
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
 
-  // Convert DuffelOffers to compatible Offers
-  const adaptedOffers = useMemo(() => offers.map(adaptDuffelOffer), [offers]);
-
-  // Filter and sort the flight offers
-  const applyFiltersAndSort = useCallback(
-    (offersList: Offer[]) => {
-      if (!offersList || offersList.length === 0) {
-        setFilteredOffers([]);
-        return;
-      }
-
-      try {
-        // Apply filters
-        const filtered = offersList.filter((offer) => {
-          // Price filter
-          const price = parseFloat(offer.total_amount || '0');
-          const isPriceInRange =
-            !isNaN(price) &&
-            price >= selectedPriceRange[0] &&
-            price <= selectedPriceRange[1];
-
-          // Airline filter - with null checks
-          const offerAirlines: string[] = [];
-
-          if (offer.slices && Array.isArray(offer.slices)) {
-            offer.slices.forEach((slice) => {
-              if (slice.segments && Array.isArray(slice.segments)) {
-                slice.segments.forEach((segment) => {
-                  if (segment.airline && segment.airline.name) {
-                    offerAirlines.push(segment.airline.name);
-                  } else if (
-                    segment.marketing_carrier &&
-                    segment.marketing_carrier.name
-                  ) {
-                    offerAirlines.push(segment.marketing_carrier.name);
-                  } else if (segment.carrier && segment.carrier.name) {
-                    offerAirlines.push(segment.carrier.name);
-                  }
-                });
-              }
-            });
-          }
-
-          // If no airlines were found in the offer or no airlines are selected, pass this filter
-          const hasSelectedAirline =
-            offerAirlines.length === 0 ||
-            selectedAirlines.length === 0 ||
-            offerAirlines.some((airline) => selectedAirlines.includes(airline));
-
-          // Stops filter - with null checks
-          const offerStops: number[] = [];
-
-          if (offer.slices && Array.isArray(offer.slices)) {
-            offer.slices.forEach((slice) => {
-              if (slice.segments && Array.isArray(slice.segments)) {
-                offerStops.push(slice.segments.length - 1);
-              }
-            });
-          }
-
-          // If no stops were found in the offer or no stops are selected, pass this filter
-          const hasSelectedStops =
-            offerStops.length === 0 ||
-            selectedStops.length === 0 ||
-            offerStops.every((stopCount) => selectedStops.includes(stopCount));
-
-          return isPriceInRange && hasSelectedAirline && hasSelectedStops;
-        });
-
-        // Sort filtered offers
-        switch (sortBy) {
-          case 'price':
-            filtered.sort((a, b) => {
-              const aPrice = parseFloat(a.total_amount || '0');
-              const bPrice = parseFloat(b.total_amount || '0');
-              return (
-                (isNaN(aPrice) ? 0 : aPrice) - (isNaN(bPrice) ? 0 : bPrice)
-              );
-            });
-            break;
-          case 'duration':
-            filtered.sort((a, b) => {
-              // Safe calculation of duration with null checks
-              const calculateTotalDuration = (offer: Offer): number => {
-                let totalDuration = 0;
-
-                if (offer.slices && Array.isArray(offer.slices)) {
-                  offer.slices.forEach((slice) => {
-                    if (
-                      slice.segments &&
-                      Array.isArray(slice.segments) &&
-                      slice.segments.length > 0
-                    ) {
-                      const firstSegment = slice.segments[0];
-                      const lastSegment =
-                        slice.segments[slice.segments.length - 1];
-
-                      if (firstSegment && lastSegment) {
-                        const departureTime = new Date(
-                          firstSegment.departure_datetime ||
-                            firstSegment.departing_at ||
-                            // firstSegment.departure_time ||
-                            ''
-                        ).getTime();
-                        const arrivalTime = new Date(
-                          lastSegment.arrival_datetime ||
-                            lastSegment.arriving_at ||
-                            // lastSegment.arrival_time ||
-                            ''
-                        ).getTime();
-
-                        if (!isNaN(departureTime) && !isNaN(arrivalTime)) {
-                          totalDuration += arrivalTime - departureTime;
-                        }
-                      }
-                    }
-                  });
-                }
-
-                return totalDuration;
-              };
-
-              return calculateTotalDuration(a) - calculateTotalDuration(b);
-            });
-            break;
-          case 'departure':
-            filtered.sort((a, b) => {
-              // Safe comparison of departure times with null checks
-              const getEarliestDeparture = (offer: Offer): number => {
-                let earliestTime = Number.MAX_SAFE_INTEGER;
-
-                if (
-                  offer.slices &&
-                  Array.isArray(offer.slices) &&
-                  offer.slices.length > 0
-                ) {
-                  const firstSlice = offer.slices[0];
-
-                  if (
-                    firstSlice &&
-                    firstSlice.segments &&
-                    Array.isArray(firstSlice.segments) &&
-                    firstSlice.segments.length > 0
-                  ) {
-                    const firstSegment = firstSlice.segments[0];
-
-                    if (firstSegment) {
-                      const departureTime = new Date(
-                        firstSegment.departure_datetime ||
-                          firstSegment.departing_at ||
-                          //   firstSegment.departure_time ||
-                          ''
-                      ).getTime();
-
-                      if (!isNaN(departureTime)) {
-                        earliestTime = departureTime;
-                      }
-                    }
-                  }
-                }
-
-                return earliestTime;
-              };
-
-              return getEarliestDeparture(a) - getEarliestDeparture(b);
-            });
-            break;
-        }
-
-        setFilteredOffers(filtered);
-      } catch (error) {
-        console.error('Error applying filters and sorting:', error);
-        // Fallback to showing all offers
-        setFilteredOffers(offersList);
-      }
-    },
-    [selectedPriceRange, selectedAirlines, selectedStops, sortBy]
-  );
-
   // Extract filter options from offers on component mount or when offers change
-  const extractFilterOptions = useCallback(() => {
-    if (!adaptedOffers || adaptedOffers.length === 0) {
+  useEffect(() => {
+    if (!offers || offers.length === 0) {
       // Reset all filters if no offers
       setFilteredOffers([]);
       setPriceRange([0, 0]);
@@ -229,7 +90,7 @@ export const FlightList: React.FC<FlightListProps> = ({
 
     try {
       // Calculate price range
-      const prices = adaptedOffers
+      const prices = offers
         .map((offer) => parseFloat(offer.total_amount || '0'))
         .filter((price) => !isNaN(price));
 
@@ -243,20 +104,13 @@ export const FlightList: React.FC<FlightListProps> = ({
       // Safely extract unique airlines with proper null checks
       const allAirlines: string[] = [];
 
-      adaptedOffers.forEach((offer) => {
+      offers.forEach((offer) => {
         if (offer.slices && Array.isArray(offer.slices)) {
           offer.slices.forEach((slice) => {
             if (slice.segments && Array.isArray(slice.segments)) {
               slice.segments.forEach((segment) => {
                 if (segment.airline && segment.airline.name) {
                   allAirlines.push(segment.airline.name);
-                } else if (
-                  segment.marketing_carrier &&
-                  segment.marketing_carrier.name
-                ) {
-                  allAirlines.push(segment.marketing_carrier.name);
-                } else if (segment.carrier && segment.carrier.name) {
-                  allAirlines.push(segment.carrier.name);
                 }
               });
             }
@@ -271,7 +125,7 @@ export const FlightList: React.FC<FlightListProps> = ({
       // Extract unique stop counts safely
       const allStopCounts: number[] = [];
 
-      adaptedOffers.forEach((offer) => {
+      offers.forEach((offer) => {
         if (offer.slices && Array.isArray(offer.slices)) {
           offer.slices.forEach((slice) => {
             if (slice.segments && Array.isArray(slice.segments)) {
@@ -286,30 +140,182 @@ export const FlightList: React.FC<FlightListProps> = ({
       );
       setStopCount(uniqueStopCounts);
       setSelectedStops(uniqueStopCounts);
+
+      // Apply initial sort and filters
+      applyFiltersAndSort(offers);
     } catch (error) {
       console.error('Error setting up filters:', error);
       // Fallback to empty filters
       setFilteredOffers([]);
     }
-  }, [adaptedOffers]);
-
-  useEffect(() => {
-    extractFilterOptions();
-  }, [extractFilterOptions]);
+  }, [offers]);
 
   // Apply filters and sorting whenever filter state changes
   useEffect(() => {
-    if (adaptedOffers && adaptedOffers.length > 0) {
-      applyFiltersAndSort(adaptedOffers);
+    if (offers && offers.length > 0) {
+      applyFiltersAndSort(offers);
     }
-  }, [
-    sortBy,
-    selectedPriceRange,
-    selectedAirlines,
-    selectedStops,
-    adaptedOffers,
-    applyFiltersAndSort,
-  ]);
+  }, [sortBy, selectedPriceRange, selectedAirlines, selectedStops, offers]);
+
+  // Filter and sort the flight offers
+  const applyFiltersAndSort = (offersList: Offer[]) => {
+    if (!offersList || offersList.length === 0) {
+      setFilteredOffers([]);
+      return;
+    }
+
+    try {
+      // Apply filters
+      const filtered = offersList.filter((offer) => {
+        // Price filter
+        const price = parseFloat(offer.total_amount || '0');
+        const isPriceInRange =
+          !isNaN(price) &&
+          price >= selectedPriceRange[0] &&
+          price <= selectedPriceRange[1];
+
+        // Airline filter - with null checks
+        const offerAirlines: string[] = [];
+
+        if (offer.slices && Array.isArray(offer.slices)) {
+          offer.slices.forEach((slice) => {
+            if (slice.segments && Array.isArray(slice.segments)) {
+              slice.segments.forEach((segment) => {
+                if (segment.airline && segment.airline.name) {
+                  offerAirlines.push(segment.airline.name);
+                }
+              });
+            }
+          });
+        }
+
+        // If no airlines were found in the offer or no airlines are selected, pass this filter
+        const hasSelectedAirline =
+          offerAirlines.length === 0 ||
+          selectedAirlines.length === 0 ||
+          offerAirlines.some((airline) => selectedAirlines.includes(airline));
+
+        // Stops filter - with null checks
+        const offerStops: number[] = [];
+
+        if (offer.slices && Array.isArray(offer.slices)) {
+          offer.slices.forEach((slice) => {
+            if (slice.segments && Array.isArray(slice.segments)) {
+              offerStops.push(slice.segments.length - 1);
+            }
+          });
+        }
+
+        // If no stops were found in the offer or no stops are selected, pass this filter
+        const hasSelectedStops =
+          offerStops.length === 0 ||
+          selectedStops.length === 0 ||
+          offerStops.every((stopCount) => selectedStops.includes(stopCount));
+
+        return isPriceInRange && hasSelectedAirline && hasSelectedStops;
+      });
+
+      // Sort filtered offers
+      switch (sortBy) {
+        case 'price':
+          filtered.sort((a, b) => {
+            const aPrice = parseFloat(a.total_amount || '0');
+            const bPrice = parseFloat(b.total_amount || '0');
+            return (isNaN(aPrice) ? 0 : aPrice) - (isNaN(bPrice) ? 0 : bPrice);
+          });
+          break;
+        case 'duration':
+          filtered.sort((a, b) => {
+            // Safe calculation of duration with null checks
+            const calculateTotalDuration = (offer: Offer): number => {
+              let totalDuration = 0;
+
+              if (offer.slices && Array.isArray(offer.slices)) {
+                offer.slices.forEach((slice) => {
+                  if (
+                    slice.segments &&
+                    Array.isArray(slice.segments) &&
+                    slice.segments.length > 0
+                  ) {
+                    const firstSegment = slice.segments[0];
+                    const lastSegment =
+                      slice.segments[slice.segments.length - 1];
+
+                    if (
+                      firstSegment &&
+                      lastSegment &&
+                      firstSegment.departure_datetime &&
+                      lastSegment.arrival_datetime
+                    ) {
+                      const departureTime = new Date(
+                        firstSegment.departure_datetime
+                      ).getTime();
+                      const arrivalTime = new Date(
+                        lastSegment.arrival_datetime
+                      ).getTime();
+
+                      if (!isNaN(departureTime) && !isNaN(arrivalTime)) {
+                        totalDuration += arrivalTime - departureTime;
+                      }
+                    }
+                  }
+                });
+              }
+
+              return totalDuration;
+            };
+
+            return calculateTotalDuration(a) - calculateTotalDuration(b);
+          });
+          break;
+        case 'departure':
+          filtered.sort((a, b) => {
+            // Safe comparison of departure times with null checks
+            const getEarliestDeparture = (offer: Offer): number => {
+              let earliestTime = Number.MAX_SAFE_INTEGER;
+
+              if (
+                offer.slices &&
+                Array.isArray(offer.slices) &&
+                offer.slices.length > 0
+              ) {
+                const firstSlice = offer.slices[0];
+
+                if (
+                  firstSlice &&
+                  firstSlice.segments &&
+                  Array.isArray(firstSlice.segments) &&
+                  firstSlice.segments.length > 0
+                ) {
+                  const firstSegment = firstSlice.segments[0];
+
+                  if (firstSegment && firstSegment.departure_datetime) {
+                    const departureTime = new Date(
+                      firstSegment.departure_datetime
+                    ).getTime();
+
+                    if (!isNaN(departureTime)) {
+                      earliestTime = departureTime;
+                    }
+                  }
+                }
+              }
+
+              return earliestTime;
+            };
+
+            return getEarliestDeparture(a) - getEarliestDeparture(b);
+          });
+          break;
+      }
+
+      setFilteredOffers(filtered);
+    } catch (error) {
+      console.error('Error applying filters and sorting:', error);
+      // Fallback to showing all offers
+      setFilteredOffers(offersList);
+    }
+  };
 
   // Handle filter changes
   const handlePriceRangeChange = (min: number, max: number) => {
@@ -317,23 +323,46 @@ export const FlightList: React.FC<FlightListProps> = ({
   };
 
   const handleAirlineToggle = (airline: string) => {
-    setSelectedAirlines((prev) =>
-      prev.includes(airline)
-        ? prev.filter((a) => a !== airline)
-        : [...prev, airline]
-    );
+    if (selectedAirlines.includes(airline)) {
+      setSelectedAirlines(selectedAirlines.filter((a) => a !== airline));
+    } else {
+      setSelectedAirlines([...selectedAirlines, airline]);
+    }
   };
 
   const handleStopToggle = (stops: number) => {
-    setSelectedStops((prev) =>
-      prev.includes(stops) ? prev.filter((s) => s !== stops) : [...prev, stops]
-    );
+    if (selectedStops.includes(stops)) {
+      setSelectedStops(selectedStops.filter((s) => s !== stops));
+    } else {
+      setSelectedStops([...selectedStops, stops]);
+    }
   };
 
-  // Handle selecting a flight with proper type conversion
-  const handleSelectFlight = (offer: Offer) => {
-    onSelectFlight(offer);
+  // Variants for animations
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+      },
+    },
   };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0 },
+  };
+
+  const filterVariants = {
+    hidden: { height: 0, opacity: 0 },
+    visible: { height: 'auto', opacity: 1, transition: { duration: 0.3 } },
+  };
+
+  // Safely determine if we have offers to show
+  const hasOffersToShow = Array.isArray(offers) && offers.length > 0;
+  const hasFilteredOffersToShow =
+    Array.isArray(filteredOffers) && filteredOffers.length > 0;
 
   return (
     <div className="mt-6">
@@ -343,13 +372,13 @@ export const FlightList: React.FC<FlightListProps> = ({
           <h2 className="text-xl font-bold">
             {isLoading
               ? 'Searching for flights...'
-              : filteredOffers.length === 0
+              : !hasFilteredOffersToShow
                 ? 'No flights found'
                 : `${filteredOffers.length} flights found`}
           </h2>
           <p className="text-sm text-gray-500">
-            {adaptedOffers.length > 0 &&
-              `Showing ${filteredOffers.length} of ${adaptedOffers.length} results`}
+            {hasOffersToShow &&
+              `Showing ${filteredOffers.length} of ${offers.length} results`}
           </p>
         </div>
 
@@ -400,14 +429,7 @@ export const FlightList: React.FC<FlightListProps> = ({
             initial="hidden"
             animate="visible"
             exit="hidden"
-            variants={{
-              hidden: { height: 0, opacity: 0 },
-              visible: {
-                height: 'auto',
-                opacity: 1,
-                transition: { duration: 0.3 },
-              },
-            }}
+            variants={filterVariants}
             className="mb-6 p-4 bg-gray-50 rounded-lg overflow-hidden"
           >
             <h3 className="font-semibold mb-4">Filter Results</h3>
@@ -539,7 +561,7 @@ export const FlightList: React.FC<FlightListProps> = ({
       )}
 
       {/* No results state */}
-      {!isLoading && filteredOffers.length === 0 && (
+      {!isLoading && !hasFilteredOffersToShow && (
         <div className="text-center py-12 bg-gray-50 rounded-lg">
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -565,28 +587,25 @@ export const FlightList: React.FC<FlightListProps> = ({
         </div>
       )}
 
-      {/* Results rendering */}
-      {!isLoading && filteredOffers.length > 0 && (
+      {/* Results list */}
+      {!isLoading && hasFilteredOffersToShow && (
         <motion.div
+          variants={containerVariants}
           initial="hidden"
           animate="visible"
-          variants={{
-            hidden: { opacity: 0 },
-            visible: {
-              opacity: 1,
-              transition: { staggerChildren: 0.1 },
-            },
-          }}
         >
-          {filteredOffers.map((offer) => (
+          {filteredOffers.map((offer, index) => (
             <motion.div
-              key={offer.id}
-              variants={{
-                hidden: { opacity: 0, y: 20 },
-                visible: { opacity: 1, y: 0 },
-              }}
+              key={offer.id || `offer-${index}`}
+              variants={itemVariants}
             >
-              <FlightCard offer={offer} onSelect={handleSelectFlight} />
+              <FlightCard
+                offer={offer as unknown as FlightOffer}
+                onSelect={(selectedOffer: FlightOffer) => {
+                  onSelectFlight(selectedOffer as unknown as Offer);
+                }}
+              />
+              ;
             </motion.div>
           ))}
         </motion.div>
@@ -594,5 +613,3 @@ export const FlightList: React.FC<FlightListProps> = ({
     </div>
   );
 };
-
-export default FlightList;
