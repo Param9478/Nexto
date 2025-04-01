@@ -1,103 +1,180 @@
-import Image from "next/image";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// src/app/page.tsx
+'use client';
+import React, { useState } from 'react';
+import { motion } from 'framer-motion';
+import { FlightSearchForm } from '@/components/flight-search/FlightSearchForm';
+import { FlightList } from '@/components/flight-results/FlightList';
+import { AnimatedText } from '@/components/ui/AnimatedText';
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [searchResults, setSearchResults] = useState<any | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [, setSelectedFlight] = useState<any | null>(null);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  const handleSearch = async (results: any) => {
+    setIsSearching(true);
+    // In a real application, this is where you would trigger an API call
+    // For now, we'll simulate a short delay
+    setTimeout(() => {
+      setSearchResults(results);
+      setIsSearching(false);
+    }, 1000);
+  };
+
+  const handleSelectFlight = (flight: any) => {
+    setSelectedFlight(flight);
+    // In a real application, this would navigate to a booking page
+    // or open a modal to collect passenger information
+    console.log('Selected flight:', flight);
+  };
+
+  // Animation variants
+  const pageVariants = {
+    initial: { opacity: 0 },
+    animate: { opacity: 1, transition: { duration: 0.5 } },
+  };
+
+  const headerVariants = {
+    initial: { y: -50, opacity: 0 },
+    animate: { y: 0, opacity: 1, transition: { duration: 0.5 } },
+  };
+
+  return (
+    <motion.div
+      className="min-h-screen bg-gray-50"
+      initial="initial"
+      animate="animate"
+      variants={pageVariants}
+    >
+      {/* Header */}
+      <motion.header
+        className="bg-blue-600 text-white py-6"
+        variants={headerVariants}
+      >
+        <div className="container mx-auto px-4">
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-2xl font-bold">Nexto</h1>
+              <p className="text-blue-100">Find your perfect flight</p>
+            </div>
+            <nav className="hidden md:block">
+              <ul className="flex space-x-6">
+                <li>
+                  <a href="#" className="hover:text-blue-200">
+                    Home
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="hover:text-blue-200">
+                    My Bookings
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="hover:text-blue-200">
+                    Help
+                  </a>
+                </li>
+              </ul>
+            </nav>
+          </div>
         </div>
+      </motion.header>
+
+      {/* Main Content */}
+      <main className="container mx-auto px-4 py-8">
+        {/* Hero Section with Search Form */}
+        <section className={`mb-8 ${searchResults ? '' : 'py-8'}`}>
+          {!searchResults && (
+            <motion.div
+              className="mb-8 text-center"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+            >
+              <AnimatedText
+                primaryText="Travel the world"
+                secondaryTexts={[
+                  'with ease',
+                  'affordably',
+                  'in comfort',
+                  'anytime',
+                ]}
+                className="text-3xl md:text-4xl font-bold text-gray-900 mb-3"
+              />
+
+              <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+                Search, compare, and book flights from hundreds of airlines
+                around the globe.
+              </p>
+            </motion.div>
+          )}
+
+          <FlightSearchForm onSearch={handleSearch} />
+        </section>
+
+        {/* Flight Results */}
+        {(searchResults || isSearching) && (
+          <section>
+            <FlightList
+              offers={searchResults?.data?.offers || []}
+              isLoading={isSearching}
+              onSelectFlight={handleSelectFlight}
+            />
+          </section>
+        )}
       </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
+
+      {/* Footer */}
+      <footer className="bg-gray-800 text-white py-8">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div>
+              <h3 className="text-lg font-semibold mb-4">Nexto</h3>
+              <p className="text-gray-400">
+                Find and book flights to destinations all around the world. We
+                search hundreds of airlines to find the best deals for you.
+              </p>
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold mb-4">Quick Links</h3>
+              <ul className="space-y-2 text-gray-400">
+                <li>
+                  <a href="#" className="hover:text-white">
+                    Search Flights
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="hover:text-white">
+                    My Bookings
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="hover:text-white">
+                    Flight Status
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="hover:text-white">
+                    Help Center
+                  </a>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold mb-4">Contact Us</h3>
+              <ul className="space-y-2 text-gray-400">
+                <li>Email: support@Nexto.com</li>
+                <li>Phone: +1 (555) 123-4567</li>
+                <li>Hours: Monday-Friday, 9am-5pm</li>
+              </ul>
+            </div>
+          </div>
+          <div className="mt-8 pt-6 border-t border-gray-700 text-center text-gray-400 text-sm">
+            &copy; {new Date().getFullYear()} Nexto. All rights reserved.
+          </div>
+        </div>
       </footer>
-    </div>
+    </motion.div>
   );
 }
