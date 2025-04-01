@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
+// @ts-ignore
+
 import { NextResponse } from 'next/server';
 import { duffelClient } from '@/lib/duffel-client';
 
