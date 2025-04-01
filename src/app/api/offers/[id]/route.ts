@@ -1,12 +1,10 @@
-// src/app/api/offers/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { duffelClient } from '@/lib/duffel-client';
 
 export async function GET(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: { id: string } }
 ) {
-  const { params } = context; // Extract params correctly
   const offerId = params.id;
 
   if (!offerId) {
