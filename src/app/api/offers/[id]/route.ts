@@ -1,9 +1,8 @@
-// @ts-ignore
 import { NextResponse } from 'next/server';
 import { duffelClient } from '@/lib/duffel-client';
 
-export async function GET(request: Request, context: any) {
-  const offerId = context.params.id;
+export async function GET(req, { params }) {
+  const offerId = params.id;
 
   if (!offerId) {
     return NextResponse.json(

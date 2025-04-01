@@ -2,4 +2,5 @@
   command = "npm run build"
   
 [build.environment]
-  SKIP_TYPESCRIPT_CHECK = "true"
+  NODE_VERSION = "18"
+  NEXT_DISABLE_SOURCEMAPS = "true"
