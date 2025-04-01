@@ -605,7 +605,6 @@ export const FlightList: React.FC<FlightListProps> = ({
                   onSelectFlight(selectedOffer as unknown as Offer);
                 }}
               />
-              ;
             </motion.div>
           ))}
         </motion.div>
